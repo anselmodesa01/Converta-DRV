@@ -4,11 +4,14 @@
     --bg-primary: #1a1d24;
     --bg-secondary: #252934;
     --bg-card: #2f3441;
+    --bg-card-hover: #3a3f4e;
     --text-primary: #f0f2f5;
     --text-secondary: #a9b1d6;
     --text-muted: #6b7280;
     --accent-primary: #3b82f6;
     --accent-secondary: #1e40af;
+    --accent-glow: rgba(59, 130, 246, 0.3);
+    --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     --border-color: #4a5568;
     --success: #10b981;
     --error: #ef4444;
@@ -905,6 +908,79 @@ input:checked + .slider:before {
     }
 }
 
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .hero {
+        padding: 5rem 1rem 1.5rem;
+    }
+    .hero-title {
+        font-size: 2.25rem;
+        line-height: 1.2;
+    }
+    .hero-description {
+        font-size: 1rem;
+    }
+    .hero-cta {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .converter-container {
+        width: 100%;
+        padding: 1.25rem;
+        margin: 2rem auto;
+        border-radius: 1.25rem;
+    }
+    .converter-header .section-title {
+        font-size: 2rem;
+    }
+    .converter-card {
+        padding: 1.25rem;
+    }
+    .drop-zone {
+        padding: 2rem 1rem;
+        border-radius: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .drop-zone-icon {
+        width: 64px;
+        height: 64px;
+        font-size: 2rem;
+    }
+    .folder-input {
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .file-items {
+        max-height: 160px;
+    }
+    .format-selector {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    .filename-input-wrapper, .save-path-wrapper {
+        height: 3rem;
+    }
+    .advanced-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .converter-actions {
+        flex-direction: column;
+    }
+    .btn-convert, .btn-secondary {
+        width: 100%;
+    }
+    .progress-info {
+        font-size: 0.875rem;
+    }
+    .steps {
+        gap: 1rem;
+    }
+}
+
 .converter-actions {
     display: flex;
     gap: 1rem;
@@ -1279,7 +1355,7 @@ input:checked + .slider:before {
     }
 
     .nav-menu {
-        display: none;
+        display: flex;
     }
 }
 
