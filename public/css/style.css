@@ -633,6 +633,27 @@ main {
     color: var(--accent-primary);
 }
 
+.file-remove {
+    margin-left: 0.5rem;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    width: 24px;
+    height: 24px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.file-remove:hover {
+    color: white;
+    border-color: var(--error);
+    background: rgba(239, 68, 68, 0.15);
+}
+
 .converter-options {
     margin-bottom: 2rem;
 }

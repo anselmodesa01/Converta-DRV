@@ -147,16 +147,45 @@ function showFileList() {
     
     fileItems.innerHTML = selectedFiles
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(file => `
+        .map((file, idx) => `
             <div class="file-item">
                 <i class="fas fa-file-video"></i>
                 <span>${file.name}</span>
                 <span style="margin-left: auto;">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                <button class="file-remove" data-index="${idx}" aria-label="Remover arquivo">&times;</button>
             </div>
         `)
         .join('');
     
     fileList.style.display = 'block';
+}
+
+// Remover arquivo individual da lista
+const fileItemsContainer = document.getElementById('fileItems');
+if (fileItemsContainer) {
+    fileItemsContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.file-remove');
+        if (!btn) return;
+        const index = parseInt(btn.getAttribute('data-index'), 10);
+        if (isNaN(index)) return;
+        selectedFiles.splice(index, 1);
+        
+        if (selectedFiles.length > 0) {
+            document.getElementById('folderPath').innerHTML = `
+                <i class="fas fa-file-check"></i>
+                <span>${selectedFiles.length} arquivos prontos para conversão</span>
+            `;
+            document.getElementById('convertBtn').disabled = false;
+            showFileList();
+        } else {
+            document.getElementById('folderPath').innerHTML = `
+                <i class="far fa-folder-open"></i>
+                <span>Nenhum arquivo ou pasta selecionada</span>
+            `;
+            document.getElementById('fileList').style.display = 'none';
+            document.getElementById('convertBtn').disabled = true;
+        }
+    });
 }
 
 // Atualizar extensão e caminho de destino quando mudar formato
