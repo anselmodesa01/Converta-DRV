@@ -16,7 +16,13 @@
                 <i class="fas fa-video"></i>
                 <span>DAV<span class="accent">Converter</span></span>
             </div>
-            <ul class="nav-menu">
+            
+            <!-- Botão do menu mobile -->
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <ul class="nav-menu" id="navMenu">
                 <li><a href="#home">Início</a></li>
                 <li><a href="#features">Recursos</a></li>
                 <li><a href="#como-funciona">Como Funciona</a></li>
@@ -139,15 +145,17 @@
             <div class="converter-card">
                 <div class="drop-zone" id="dropZone">
                     <div class="drop-zone-content">
-                        <i class="fas fa-cloud-upload-alt"></i>
+                        <div class="drop-zone-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
                         <h3>Arraste e solte arquivos ou pastas aqui</h3>
-                        <p>Ou clique para selecionar arquivos ou pastas</p>
+                        <p>Suporta DAV, MP4, AVI, MKV e extração para MP3</p>
                         <div class="drop-zone-actions">
                             <button class="btn-drop" onclick="selectFolder()">
                                 <i class="fas fa-folder-plus"></i> Selecionar Pasta
                             </button>
                             <button class="btn-drop" onclick="selectFile()">
-                                <i class="fas fa-file-plus"></i> Selecionar Arquivos
+                                <i class="fas fa-file-video"></i> Selecionar Arquivos
                             </button>
                         </div>
                     </div>
@@ -214,6 +222,13 @@
                                     DAV
                                 </span>
                             </label>
+                            <label class="format-option">
+                                <input type="radio" name="format" value="mp3">
+                                <span class="format-badge">
+                                    <i class="fas fa-file-audio"></i>
+                                    MP3
+                                </span>
+                            </label>
                         </div>
                     </div>
 
@@ -227,17 +242,34 @@
 
                     <div class="options-group">
                         <label>Opções avançadas:</label>
-                        <div class="advanced-options">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="keepOriginals" checked>
-                                <span class="checkbox-custom"></span>
-                                Manter arquivos originais
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="orderByDate" checked>
-                                <span class="checkbox-custom"></span>
-                                Ordenar por data
-                            </label>
+                        <div class="advanced-options-grid">
+                            <div class="advanced-option-card">
+                                <div class="option-info">
+                                    <i class="fas fa-save"></i>
+                                    <div class="option-text">
+                                        <span class="option-title">Manter originais</span>
+                                        <span class="option-desc">Não apagar arquivos .dav após converter</span>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="keepOriginals" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="advanced-option-card">
+                                <div class="option-info">
+                                    <i class="fas fa-sort-amount-down"></i>
+                                    <div class="option-text">
+                                        <span class="option-title">Ordenar por data</span>
+                                        <span class="option-desc">Organizar arquivos pela cronologia</span>
+                                    </div>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="orderByDate" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>

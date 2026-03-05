@@ -5,6 +5,29 @@ let selectedFiles = [];
 // Configuração da zona de drop
 const dropZone = document.getElementById('dropZone');
 
+// Menu Mobile
+const menuToggle = document.getElementById('menuToggle');
+const navMenu = document.getElementById('navMenu');
+
+if (menuToggle && navMenu) {
+    menuToggle.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
+        const icon = menuToggle.querySelector('i');
+        icon.classList.toggle('fa-bars');
+        icon.classList.toggle('fa-times');
+    });
+
+    // Fechar menu ao clicar em um link
+    navMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            navMenu.classList.remove('active');
+            const icon = menuToggle.querySelector('i');
+            icon.classList.add('fa-bars');
+            icon.classList.remove('fa-times');
+        });
+    });
+}
+
 if (dropZone) {
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, (e) => {
@@ -36,10 +59,13 @@ if (dropZone) {
     }, false);
 }
 
+const ALLOWED_EXTENSIONS = ['dav', 'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm'];
+
 async function scanFiles(entry) {
     if (entry.isFile) {
         const file = await new Promise((resolve) => entry.file(resolve));
-        if (file.name.toLowerCase().endsWith('.dav')) {
+        const ext = file.name.toLowerCase().split('.').pop();
+        if (ALLOWED_EXTENSIONS.includes(ext)) {
             selectedFiles.push(file);
         }
     } else if (entry.isDirectory) {
@@ -55,13 +81,13 @@ function handleFilesSelected() {
     if (selectedFiles.length > 0) {
         document.getElementById('folderPath').parentNode.style.display = 'flex';
         document.getElementById('folderPath').innerHTML = `
-            <i class="fas fa-folder-open"></i>
-            <span>${selectedFiles.length} arquivos DAV prontos para conversão</span>
+            <i class="fas fa-file-check"></i>
+            <span>${selectedFiles.length} arquivos prontos para conversão</span>
         `;
         showFileList();
         document.getElementById('convertBtn').disabled = false;
     } else {
-        alert('Nenhum arquivo .dav encontrado!');
+        alert('Nenhum arquivo de vídeo compatível encontrado!');
     }
 }
 
@@ -76,8 +102,11 @@ function selectFolder() {
         const files = Array.from(e.target.files);
         selectedFolder = files[0]?.webkitRelativePath.split('/')[0] || 'Pasta selecionada';
         
-        // Filtra apenas arquivos .dav
-        selectedFiles = files.filter(file => file.name.toLowerCase().endsWith('.dav'));
+        // Filtra apenas arquivos compatíveis
+        selectedFiles = files.filter(file => {
+            const ext = file.name.toLowerCase().split('.').pop();
+            return ALLOWED_EXTENSIONS.includes(ext);
+        });
         
         handleFilesSelected();
     };
@@ -89,15 +118,18 @@ function selectFolder() {
 function selectFile() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.dav';
+    input.accept = ALLOWED_EXTENSIONS.map(ext => '.' + ext).join(',');
     input.multiple = true;
     
     input.onchange = (e) => {
         const files = Array.from(e.target.files);
         selectedFolder = ''; // Reset folder if individual files are picked
         
-        // Filtra apenas arquivos .dav (caso o accept falhe)
-        selectedFiles = files.filter(file => file.name.toLowerCase().endsWith('.dav'));
+        // Filtra apenas arquivos compatíveis
+        selectedFiles = files.filter(file => {
+            const ext = file.name.toLowerCase().split('.').pop();
+            return ALLOWED_EXTENSIONS.includes(ext);
+        });
         
         handleFilesSelected();
     };
@@ -180,12 +212,19 @@ async function startConversion() {
     });
     formData.append('format', format);
     formData.append('filename', filename);
+    formData.append('keepOriginals', document.getElementById('keepOriginals').checked);
+    formData.append('orderByDate', document.getElementById('orderByDate').checked);
 
     try {
-        const response = await fetch('http://localhost:5020/convert', {
+        const response = await fetch('/convert', {
             method: 'POST',
             body: formData
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Erro no servidor (${response.status})`);
+        }
 
         const result = await response.json();
         
@@ -203,16 +242,16 @@ async function startConversion() {
         }
     } catch (error) {
         clearInterval(progressInterval);
-        // document.getElementById('progressContainer').style.display = 'none';
         document.getElementById('convertBtn').disabled = false;
         
-        if (error.logs) {
-            document.getElementById('logContent').textContent = error.logs;
-        } else {
-            document.getElementById('logContent').textContent += '\n\nERRO: ' + error.message;
+        let errorMsg = error.message;
+        if (errorMsg.includes('Failed to fetch')) {
+            errorMsg = 'A conexão com o servidor foi interrompida (ERR_CONNECTION_RESET). \n\nPossíveis causas:\n1. O arquivo é muito grande para o servidor local.\n2. O servidor Python parou de responder.';
         }
         
-        alert('Erro na conversão: ' + error.message + '\nVerifique o console para mais detalhes.');
+        document.getElementById('logContent').textContent += '\n\nERRO: ' + errorMsg;
+        
+        alert('Erro na conversão: ' + errorMsg + '\nVerifique o console para mais detalhes.');
     }
 }
 
@@ -282,7 +321,7 @@ function completeConversion(format, filename, downloadUrl) {
             <small>Total de ${selectedFiles.length} arquivos processados pelo motor FFmpeg.</small>
         `;
 
-        window.lastDownloadUrl = 'http://localhost:5000' + downloadUrl;
+        window.lastDownloadUrl = 'http://localhost:5020' + downloadUrl;
     }, 500);
 }
 
