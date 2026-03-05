@@ -234,7 +234,7 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
         self.send_json_response(status, {'success': False, 'error': message})
 
 if __name__ == '__main__':
-    port = 8000
+    port = int(os.environ.get('PORT', '8000'))
     print(f"--- Iniciando servidor local na porta {port}... ---")
     try:
         # Usar ThreadingHTTPServer para permitir múltiplas conexões simultâneas

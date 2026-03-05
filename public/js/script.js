@@ -382,7 +382,9 @@ function completeConversion(format, filename, downloadUrl) {
             <small>Total de ${selectedFiles.length} arquivos processados pelo motor FFmpeg.</small>
         `;
 
-        window.lastDownloadUrl = 'http://localhost:5020' + downloadUrl;
+        window.lastDownloadUrl = downloadUrl.startsWith('http')
+            ? downloadUrl
+            : downloadUrl;
     }, 500);
 }
 

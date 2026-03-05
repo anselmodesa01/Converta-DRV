@@ -2,26 +2,22 @@
     "version": 2,
     "builds": [
         {
-            "src": "api/index.py",
-            "use": "@vercel/python"
-        },
-        {
             "src": "public/**",
             "use": "@vercel/static"
         }
     ],
     "routes": [
         {
-            "src": "/api/(.*)",
-            "dest": "/api/index.py"
+            "src": "/api",
+            "dest": "https://converta-drv.onrender.com/api"
         },
         {
-            "src": "/api",
-            "dest": "/api/index.py"
+            "src": "/api/(.*)",
+            "dest": "https://converta-drv.onrender.com/api/$1"
         },
         {
             "src": "/download/(.*)",
-            "dest": "/api/index.py"
+            "dest": "https://converta-drv.onrender.com/download/$1"
         },
         {
             "src": "/(.*)",
