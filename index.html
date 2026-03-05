@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAV Converter Pro - Transforme seus vídeos de segurança</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header com navegação -->
+    <header class="header">
+        <nav class="nav-container">
+            <div class="logo">
+                <i class="fas fa-video"></i>
+                <span>DAV<span class="accent">Converter</span></span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home">Início</a></li>
+                <li><a href="#features">Recursos</a></li>
+                <li><a href="#como-funciona">Como Funciona</a></li>
+                <li><a href="#contato">Contato</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn-outline" onclick="scrollToConverter()">
+                    <i class="fas fa-arrow-down"></i> Converter Agora
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-background">
+            <div class="gradient-sphere"></div>
+            <div class="grid-overlay"></div>
+        </div>
+        <div class="hero-content">
+            <div class="badge">
+                <i class="fas fa-shield-alt"></i>
+                <span>Especialista em DVR/Dav</span>
+            </div>
+            <h1 class="hero-title">
+                Converta seus vídeos <span class="gradient-text">DAV</span><br>
+                em segundos
+            </h1>
+            <p class="hero-description">
+                A ferramenta mais rápida e confiável para converter arquivos de sistemas de vigilância. 
+                Mantenha a qualidade original e tenha compatibilidade com todos os players.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Qualidade mantida</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">1.2k+</span>
+                    <span class="stat-label">Conversões realizadas</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">30s</span>
+                    <span class="stat-label">Tempo médio</span>
+                </div>
+            </div>
+            <div class="hero-cta">
+                <button class="btn-primary" onclick="scrollToConverter()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Começar Conversão
+                </button>
+                <button class="btn-play" onclick="showDemo()">
+                    <i class="fas fa-play"></i>
+                    Ver Demonstração
+                </button>
+            </div>
+        </div>
+        <div class="hero-image">
+            <img src="assets/converter-illustration.svg" alt="Converter Illustration">
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="section-header">
+            <span class="section-subtitle">Por que escolher nossa ferramenta?</span>
+            <h2 class="section-title">Recursos <span class="accent">poderosos</span></h2>
+            <p class="section-description">
+                Desenvolvido especificamente para arquivos de sistemas de segurança
+            </p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h3>Conversão Rápida</h3>
+                <p>Converta vários arquivos simultaneamente em segundos, não em horas.</p>
+                <div class="feature-stats">30s em média</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Qualidade Original</h3>
+                <p>Preservamos 100% da qualidade do seu vídeo original.</p>
+                <div class="feature-stats">Sem perdas</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-film"></i>
+                </div>
+                <h3>Múltiplos Formatos</h3>
+                <p>Converta para AVI, MP4, MKV ou mantenha como DAV.</p>
+                <div class="feature-stats">4 formatos</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-windows"></i>
+                </div>
+                <h3>Nativo Windows</h3>
+                <p>Script otimizado para Windows, sem necessidade de instalação.</p>
+                <div class="feature-stats">.bat nativo</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Converter Section -->
+    <section class="converter" id="converter">
+        <div class="converter-container">
+            <div class="converter-header">
+                <h2>Conversor <span class="gradient-text">Inteligente</span></h2>
+                <p>Conversão real de arquivos DAV via motor Python + FFmpeg</p>
+                <div class="engine-badge">
+                    <i class="fab fa-python"></i>
+                    Servidor Python Ativo (Porta 5000)
+                </div>
+            </div>
+            
+            <div class="converter-card">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-content">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Arraste e solte arquivos ou pastas aqui</h3>
+                        <p>Ou clique para selecionar arquivos ou pastas</p>
+                        <div class="drop-zone-actions">
+                            <button class="btn-drop" onclick="selectFolder()">
+                                <i class="fas fa-folder-plus"></i> Selecionar Pasta
+                            </button>
+                            <button class="btn-drop" onclick="selectFile()">
+                                <i class="fas fa-file-plus"></i> Selecionar Arquivos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="folder-input" style="display: none;">
+                    <div class="folder-path" id="folderPath">
+                        <i class="far fa-folder-open"></i>
+                        <span>Nenhum arquivo ou pasta selecionada</span>
+                    </div>
+                    <div class="destination-path" id="destinationPath">
+                        <i class="fas fa-download"></i>
+                        <span>Destino: Pasta de Downloads</span>
+                    </div>
+                    <div class="input-actions">
+                        <button class="btn-folder" onclick="selectFolder()">
+                            <i class="fas fa-folder-open"></i>
+                            Pasta
+                        </button>
+                        <button class="btn-folder" onclick="selectFile()">
+                            <i class="fas fa-file-video"></i>
+                            Arquivo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="file-list" id="fileList" style="display: none;">
+                    <div class="file-list-header">
+                        <span><i class="fas fa-file-video"></i> Arquivos encontrados:</span>
+                        <span id="fileCount">0</span>
+                    </div>
+                    <div class="file-items" id="fileItems"></div>
+                </div>
+
+                <div class="converter-options">
+                    <div class="options-group">
+                        <label>Formato de saída:</label>
+                        <div class="format-selector">
+                            <label class="format-option">
+                                <input type="radio" name="format" value="avi" checked>
+                                <span class="format-badge">
+                                    <i class="fas fa-file-video"></i>
+                                    AVI
+                                </span>
+                            </label>
+                            <label class="format-option">
+                                <input type="radio" name="format" value="mp4">
+                                <span class="format-badge">
+                                    <i class="fas fa-file-video"></i>
+                                    MP4
+                                </span>
+                            </label>
+                            <label class="format-option">
+                                <input type="radio" name="format" value="mkv">
+                                <span class="format-badge">
+                                    <i class="fas fa-file-video"></i>
+                                    MKV
+                                </span>
+                            </label>
+                            <label class="format-option">
+                                <input type="radio" name="format" value="dav">
+                                <span class="format-badge">
+                                    <i class="fas fa-file-archive"></i>
+                                    DAV
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="options-group">
+                        <label>Nome do arquivo final:</label>
+                        <div class="filename-input">
+                            <input type="text" id="filename" placeholder="video_completo" value="video_camera">
+                            <span class="extension" id="extension">.avi</span>
+                        </div>
+                    </div>
+
+                    <div class="options-group">
+                        <label>Opções avançadas:</label>
+                        <div class="advanced-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="keepOriginals" checked>
+                                <span class="checkbox-custom"></span>
+                                Manter arquivos originais
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="orderByDate" checked>
+                                <span class="checkbox-custom"></span>
+                                Ordenar por data
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="converter-actions">
+                    <button class="btn-convert" onclick="startConversion()" id="convertBtn" disabled>
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Iniciar Conversão</span>
+                    </button>
+                    <button class="btn-secondary" onclick="resetConverter()">
+                        <i class="fas fa-undo-alt"></i>
+                        Limpar
+                    </button>
+                </div>
+
+                <div class="progress-container" id="progressContainer" style="display: none;">
+                    <div class="progress-info">
+                        <span>Convertendo...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-status" id="progressStatus">
+                        Aguardando início...
+                    </div>
+                    
+                    <div class="console-toggle">
+                        <button class="btn-console" onclick="toggleConsole()">
+                            <i class="fas fa-terminal"></i>
+                            Ver no console
+                        </button>
+                    </div>
+                    
+                    <div class="console-log" id="consoleLog" style="display: none;">
+                        <div class="console-header">
+                            <span><i class="fas fa-code"></i> Output do FFmpeg</span>
+                            <button onclick="copyLogs()"><i class="far fa-copy"></i></button>
+                        </div>
+                        <pre id="logContent">Aguardando logs do processo...</pre>
+                    </div>
+                </div>
+
+                <div class="result-container" id="resultContainer" style="display: none;">
+                    <div class="result-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h3>Conversão concluída!</h3>
+                    <p id="resultMessage"></p>
+                    <button class="btn-outline" onclick="downloadResult()">
+                        <i class="fas fa-download"></i>
+                        Baixar Arquivo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="como-funciona" class="how-it-works">
+        <div class="section-header">
+            <span class="section-subtitle">Simples como 1-2-3</span>
+            <h2 class="section-title">Como <span class="accent">funciona</span></h2>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3>Selecione a pasta</h3>
+                <p>Escolha a pasta onde estão seus arquivos DAV</p>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-icon">
+                    <i class="fas fa-sliders-h"></i>
+                </div>
+                <h3>Configure</h3>
+                <p>Escolha o formato e nome do arquivo final</p>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3>Converta</h3>
+                <p>Clique em converter e pronto!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq">
+        <div class="section-header">
+            <span class="section-subtitle">Dúvidas comuns</span>
+            <h2 class="section-title">Perguntas <span class="accent">frequentes</span></h2>
+        </div>
+        <div class="faq-container">
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>O que é um arquivo DAV?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    DAV é um formato de vídeo utilizado por sistemas de segurança e DVRs. É similar ao MP4, mas com um container proprietário.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>Vou perder qualidade na conversão?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Não! Nosso conversor mantém 100% da qualidade original, apenas altera o container do vídeo.
+                </div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <span>Preciso instalar algo?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Não! Tudo é executado via script nativo do Windows. O FFmpeg é baixado automaticamente se necessário.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo">
+                    <i class="fas fa-video"></i>
+                    <span>DAV<span class="accent">Converter</span></span>
+                </div>
+                <p>A solução definitiva para conversão de vídeos de segurança</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Produto</h4>
+                    <ul>
+                        <li><a href="#features">Recursos</a></li>
+                        <li><a href="#como-funciona">Como usar</a></li>
+                        <li><a href="#faq">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Suporte</h4>
+                    <ul>
+                        <li><a href="#contato">Contato</a></li>
+                        <li><a href="#">Documentação</a></li>
+                        <li><a href="#">Tutorial</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 DAVConverter. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

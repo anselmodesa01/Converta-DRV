@@ -1,0 +1,35 @@
+# Arquivos de sistema
+.DS_Store
+
+# Arquivos de log
+*.log
+
+# Arquivos de ambiente virtual
+/venv/
+/env/
+
+# Arquivos de cache do Python
+__pycache__/
+*.pyc
+
+# Binários
+ffmpeg.exe
+ffmpeg.zip
+/ffmpeg_temp/
+
+# Arquivos de upload e output
+uploads/
+outputs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos de chave
+*.pem
+*.key
+github_key.pub
+id_rsa
+id_rsa.pub
+ssh_key
+ssh_key.pub
