@@ -1,4 +1,5 @@
 // Variáveis globais
+const API_BASE_URL = 'https://converta-drv.onrender.com';
 let selectedFolder = '';
 let selectedFiles = [];
 
@@ -277,18 +278,26 @@ async function startConversion() {
     formData.append('savePath', document.getElementById('savePath').value);
 
     try {
-        const response = await fetch('/api', {
+        const response = await fetch(`${API_BASE_URL}/api`, {
             method: 'POST',
             body: formData
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Erro no servidor (${response.status})`);
+        let result;
+        const contentType = response.headers.get("content-type");
+        
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            result = await response.json();
+        } else {
+            const text = await response.text();
+            console.error('Resposta não-JSON recebida:', text);
+            throw new Error(`O servidor retornou uma resposta inesperada (Status ${response.status}). Verifique se o backend está ativo.`);
         }
 
-        const result = await response.json();
-        
+        if (!response.ok) {
+            throw new Error(result.error || `Erro no servidor (${response.status})`);
+        }
+
         clearInterval(progressInterval);
         
         // Mostrar logs se disponíveis
@@ -297,7 +306,11 @@ async function startConversion() {
         }
         
         if (result.success) {
-            completeConversion(format, filename, result.download_url);
+            // Se o backend retornar uma URL relativa, prefixamos com a base da API
+            const downloadUrl = result.download_url.startsWith('http') 
+                ? result.download_url 
+                : `${API_BASE_URL}${result.download_url}`;
+            completeConversion(format, filename, downloadUrl);
         } else {
             throw new Error(result.error || 'Erro desconhecido no servidor.');
         }
@@ -382,9 +395,10 @@ function completeConversion(format, filename, downloadUrl) {
             <small>Total de ${selectedFiles.length} arquivos processados pelo motor FFmpeg.</small>
         `;
 
+        // Se downloadUrl for relativa, prefixamos com API_BASE_URL
         window.lastDownloadUrl = downloadUrl.startsWith('http')
             ? downloadUrl
-            : downloadUrl;
+            : `${API_BASE_URL}${downloadUrl}`;
     }, 500);
 }
 
