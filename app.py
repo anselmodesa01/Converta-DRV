@@ -5,8 +5,12 @@ import time
 import zipfile
 import urllib.request
 import re
+import uuid
+import threading
+import psutil
 from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+from werkzeug.formparser import parse_form_data
 
 # Configurações de pastas usando caminhos absolutos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +22,31 @@ STATIC_FOLDER = os.path.join(BASE_DIR, 'public')
 # Garante que as pastas existam
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+# Gerenciador de logs em memória para SSE
+class LogStore:
+    def __init__(self):
+        self.logs = {}
+        self.lock = threading.Lock()
+
+    def add_log(self, client_id, message):
+        with self.lock:
+            if client_id not in self.logs:
+                self.logs[client_id] = []
+            timestamp = time.strftime('%H:%M:%S')
+            self.logs[client_id].append(f"[{timestamp}] {message}")
+            print(f"[{client_id}] {message}")
+
+    def get_logs(self, client_id):
+        with self.lock:
+            return self.logs.get(client_id, [])
+
+    def clear_logs(self, client_id):
+        with self.lock:
+            if client_id in self.logs:
+                del self.logs[client_id]
+
+log_store = LogStore()
 
 def download_ffmpeg():
     print("--- FFmpeg não encontrado. Baixando automaticamente... ---")
@@ -41,17 +70,27 @@ def download_ffmpeg():
         return False
 
 def get_ffmpeg_command():
+    print("--- Verificando instalação do FFmpeg... ---")
     if os.path.exists(FFMPEG_PATH):
+        print("--- FFmpeg encontrado na pasta do projeto. ---")
         return f'"{FFMPEG_PATH}"'
     try:
         ret = subprocess.call('ffmpeg -version', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
         if ret == 0:
+            print("--- FFmpeg encontrado no sistema (PATH). ---")
             return 'ffmpeg'
     except:
         pass
+    
+    print("*** AVISO: FFmpeg não encontrado. ***")
     if download_ffmpeg():
         return f'"{FFMPEG_PATH}"'
+    
+    print("*** ERRO FATAL: Não foi possível encontrar ou baixar o FFmpeg. ***")
     return None
+
+# Iniciar verificação do FFmpeg ao carregar o script
+FFMPEG_CMD = get_ffmpeg_command()
 
 class UnifiedHandler(SimpleHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
@@ -64,141 +103,233 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
         # Cabeçalhos CORS para desenvolvimento
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, X-Client-ID')
         super().end_headers()
 
     def do_OPTIONS(self):
         self.send_response(200)
         self.end_headers()
 
-    def parse_multipart_streaming(self):
-        content_type = self.headers.get('Content-Type')
-        if not content_type or not content_type.startswith('multipart/form-data'):
-            return None, "Not a multipart/form-data request"
-        try:
-            boundary = content_type.split("boundary=")[1].encode()
-        except IndexError:
-            return None, "Boundary not found"
-        content_length = int(self.headers.get('Content-Length', 0))
-        if content_length == 0:
-            return None, "Empty body"
-        try:
-            remaining = content_length
-            chunks = []
-            read_size = 65536
-            while remaining > 0:
-                chunk = self.rfile.read(min(remaining, read_size))
-                if not chunk: break
-                chunks.append(chunk)
-                remaining -= len(chunk)
-            body = b''.join(chunks)
-            del chunks
-        except Exception as e:
-            return None, f"Erro na leitura do stream: {e}"
-        parts = body.split(b'--' + boundary)
-        data = {'files': [], 'format': 'mp4', 'filename': f"video_{int(time.time())}"}
-        for part in parts:
-            if not part or part.strip() == b'--' or part.strip() == b'': continue
-            try:
-                if b'\r\n\r\n' not in part: continue
-                head, content = part.split(b'\r\n\r\n', 1)
-                if content.endswith(b'\r\n'): content = content[:-2]
-                head_str = head.decode('utf-8', errors='ignore')
-                if 'name="format"' in head_str:
-                    data['format'] = content.decode('utf-8', errors='ignore').strip()
-                elif 'name="filename"' in head_str:
-                    data['filename'] = content.decode('utf-8', errors='ignore').strip()
-                elif 'name="keepOriginals"' in head_str:
-                    data['keepOriginals'] = content.decode('utf-8', errors='ignore').strip() == 'true'
-                elif 'name="orderByDate"' in head_str:
-                    data['orderByDate'] = content.decode('utf-8', errors='ignore').strip() == 'true'
-                elif 'name="files"' in head_str:
-                    match = re.search(r'filename="([^"]+)"', head_str)
-                    if match:
-                        orig_filename = match.group(1)
-                        temp_name = f"upload_{int(time.time())}_{orig_filename}"
-                        path = os.path.join(UPLOAD_FOLDER, temp_name)
-                        with open(path, 'wb') as f:
-                            f.write(content)
-                        data['files'].append(path)
-            except Exception as e:
-                print(f"Erro no parsing: {e}")
-        return data, None
-
     def do_POST(self):
         if self.path == '/api' or self.path == '/convert':
+            client_id = self.headers.get('X-Client-ID', 'default')
+            log_store.add_log(client_id, "ESTADO:RECEBENDO|Iniciando recebimento dos dados...")
             try:
-                ffmpeg_cmd = get_ffmpeg_command()
-                if not ffmpeg_cmd:
-                    self.send_error_response(500, "FFmpeg não encontrado.")
+                if not FFMPEG_CMD:
+                    self.send_error_response(500, "FFmpeg não está instalado ou configurado.")
                     return
-                data, err = self.parse_multipart_streaming()
-                if err:
-                    self.send_error_response(400, err)
-                    return
-                output_format = data.get('format', 'mp4')
-                output_name = data.get('filename', f"video_{int(time.time())}")
-                saved_files = data.get('files', [])
-                keep_originals = data.get('keepOriginals', False)
-                order_by_date = data.get('orderByDate', False)
+
+                # Usar Werkzeug para parse do formulário
+                log_store.add_log(client_id, "ESTADO:PROCESSANDO|Lendo dados do formulário...")
+                environ = {
+                    'REQUEST_METHOD': 'POST',
+                    'CONTENT_TYPE': self.headers['Content-Type'],
+                    'CONTENT_LENGTH': self.headers['Content-Length'],
+                    'wsgi.input': self.rfile
+                }
+                _, form, files = parse_form_data(environ)
+
+                output_format = form.get('format', 'mp4')
+                output_name = form.get('filename', f"video_{int(time.time())}")
+                keep_originals = form.get('keepOriginals') == 'true'
+                order_by_date = form.get('orderByDate') == 'true'
+
+                saved_files = []
+                files_list = files.getlist('files')
+                log_store.add_log(client_id, f"Arquivos recebidos: {len(files_list)}")
+
+                for file in files_list:
+                    if file.filename:
+                        clean_filename = os.path.basename(file.filename).replace(' ', '_')
+                        temp_name = f"upload_{int(time.time())}_{clean_filename}"
+                        path = os.path.join(UPLOAD_FOLDER, temp_name)
+                        
+                        log_store.add_log(client_id, f"Salvando: {file.filename}")
+                        # Usar o método save() nativo do Werkzeug que é mais rápido e seguro
+                        file.save(path)
+                        actual_size = os.path.getsize(path)
+                        log_store.add_log(client_id, f"Salvo: {file.filename} ({actual_size / 1024 / 1024:.2f} MB)")
+                        saved_files.append(path)
+
                 if not saved_files:
+                    log_store.add_log(client_id, "Erro: Nenhum arquivo foi salvo.")
                     self.send_error_response(400, "Nenhum arquivo enviado.")
                     return
+
                 if order_by_date and len(saved_files) > 1:
                     saved_files.sort(key=lambda x: os.path.basename(x))
-                output_filename = f"{output_name}.{output_format}"
+                
+                # Evitar extensões duplicadas (ex: video.avi.avi)
+                clean_output_name = output_name
+                if clean_output_name.lower().endswith(f".{output_format.lower()}"):
+                    clean_output_name = clean_output_name[:-(len(output_format) + 1)]
+
+                output_filename = f"{clean_output_name}.{output_format}"
                 output_path = os.path.join(OUTPUT_FOLDER, output_filename)
                 
-                # Comando FFmpeg
+                # Calcular tamanho total dinâmico para os logs
+                total_size_bytes = sum(os.path.getsize(p) for p in saved_files)
+                total_size_mb = total_size_bytes / (1024 * 1024)
+                size_str = f"{total_size_mb:.2f} MB" if total_size_mb < 1024 else f"{total_size_mb/1024:.2f} GB"
+
+                log_store.add_log(client_id, f"ESTADO:PROCESSANDO|Tamanho total: {size_str}")
+
+                # --- MOTOR DE CONVERSÃO MULTI-ESTRATÉGIA ---
+                def get_video_duration(file_path):
+                    """Usa ffprobe para obter a duração de um vídeo em segundos."""
+                    command = f'"{FFMPEG_PATH.replace("ffmpeg.exe", "ffprobe.exe")}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{file_path}"'
+                    try:
+                        result = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
+                        return float(result)
+                    except Exception as e:
+                        log_store.add_log(client_id, f"LOG:Aviso - Não foi possível obter a duração de '{os.path.basename(file_path)}'. A barra de progresso pode não ser precisa.")
+                        return 0
+
+                def run_ffmpeg(args, desc, total_duration=0):
+                    log_store.add_log(client_id, f"ESTADO:CONVERTENDO|{desc}...")
+                    log_store.add_log(client_id, f"LOG:Comando: {FFMPEG_CMD} {args}")
+                    
+                    process = subprocess.Popen(
+                        f'{FFMPEG_CMD} {args}',
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        shell=True,
+                        universal_newlines=True,
+                        encoding='utf-8',
+                        errors='replace'
+                    )
+                    
+                    last_line = ""
+                    for line in process.stdout:
+                        line = line.strip()
+                        if not line: continue
+                        last_line = line
+
+                        if 'time=' in line:
+                            match = re.search(r'time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})', line)
+                            if match and total_duration > 0:
+                                hours, minutes, seconds, ms = map(int, match.groups())
+                                current_time = hours * 3600 + minutes * 60 + seconds + ms / 100
+                                progress = (current_time / total_duration) * 100
+                                log_store.add_log(client_id, f"PROGRESSO:{min(progress, 100):.1f}")
+                            else:
+                                # Fallback para quando a duração não está disponível
+                                log_store.add_log(client_id, f"PROGRESSO:LINE:{line}")
+                        else:
+                             log_store.add_log(client_id, f"LOG:{line}")
+
+                    process.wait()
+                    success = os.path.exists(output_path) and os.path.getsize(output_path) > 1000
+                    if not success:
+                        log_store.add_log(client_id, f"ERRO:Falha na estratégia '{desc}'. Última linha do log: {last_line}")
+
+                    return success, last_line
+
+                list_path = None
+                success = False
+                error_log = ""
+
+                total_duration = 0
+                if len(saved_files) == 1:
+                    total_duration = get_video_duration(saved_files[0])
+                # Para múltiplos arquivos, o cálculo da duração é mais complexo e será ignorado por enquanto.
+
+                # Definir estratégias para DAV ou outros formatos
                 if len(saved_files) > 1:
+                    # Estratégia de UNIÃO (Concat)
                     list_path = os.path.join(UPLOAD_FOLDER, f'list_{int(time.time())}.txt')
                     with open(list_path, 'w', encoding='utf-8') as f:
                         for p in saved_files:
                             f.write(f"file '{os.path.abspath(p).replace('\\', '/')}'\n")
+                    
                     if output_format == 'mp3':
-                        ffmpeg_args = f'-f concat -safe 0 -i "{list_path}" -vn -acodec libmp3lame -q:a 2 "{output_path}" -y'
+                        success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -vn -acodec libmp3lame -q:a 2 "{output_path}" -y', "Extraindo áudio de todos")
                     elif output_format == 'avi':
-                        ffmpeg_args = f'-f concat -safe 0 -i "{list_path}" -c:v mpeg4 -vtag xvid -q:v 5 -c:a aac "{output_path}" -y'
+                        success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c:v mpeg4 -vtag xvid -q:v 5 -c:a aac "{output_path}" -y', "Unindo em AVI")
                     else:
-                        ffmpeg_args = f'-f concat -safe 0 -i "{list_path}" -c copy "{output_path}" -y'
+                        # Estratégia 1: Concat rápido
+                        success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c copy "{output_path}" -y', "Tentando união rápida")
+                        if not success:
+                            # Estratégia 2: Concat com Re-encode (mais seguro para DAVs diferentes)
+                            success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac "{output_path}" -y', "Tentando união com re-processamento")
                 else:
+                    # Estratégia de ARQUIVO ÚNICO
                     input_path = os.path.abspath(saved_files[0])
+                    is_dav = input_path.lower().endswith('.dav')
+                    
                     if output_format == 'mp3':
-                        ffmpeg_args = f'-i "{input_path}" -vn -acodec libmp3lame -q:a 2 "{output_path}" -y'
+                        success, error_log = run_ffmpeg(f'-i "{input_path}" -vn -acodec libmp3lame -q:a 2 "{output_path}" -y', "Extraindo áudio", total_duration)
                     elif output_format == 'avi':
-                        ffmpeg_args = f'-i "{input_path}" -c:v mpeg4 -vtag xvid -q:v 5 -c:a aac "{output_path}" -y'
-                    elif output_format == 'mp4' or output_format == 'mkv':
-                        ffmpeg_args = f'-i "{input_path}" -c copy "{output_path}" -y'
+                        success, error_log = run_ffmpeg(f'-i "{input_path}" -c:v mpeg4 -vtag xvid -q:v 5 -c:a aac "{output_path}" -y', "Convertendo para AVI", total_duration)
+                    elif is_dav:
+                        # ESTRATÉGIA 1: Modo Especialista DHAV (Dahua/Intelbras)
+                        success, error_log = run_ffmpeg(f'-analyzeduration 100M -probesize 100M -f dhav -i "{input_path}" -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -fflags +genpts "{output_path}" -y', "Estratégia 1: Formato DHAV", total_duration)
                     else:
-                        ffmpeg_args = f'-i "{input_path}" -c copy "{output_path}" -y'
-                    list_path = None
-                
-                process = subprocess.run(f'{ffmpeg_cmd} {ffmpeg_args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-                
-                # Se copy falhar, tenta re-encode
-                if process.returncode != 0 and (output_format == 'mp4' or output_format == 'mkv') and len(saved_files) == 1:
-                    if output_format == 'mp4':
-                        ffmpeg_args = f'-i "{input_path}" -c:v libx264 -crf 23 -preset ultrafast -c:a aac "{output_path}" -y'
-                    else:
-                        ffmpeg_args = f'-i "{input_path}" -c:v libx264 -crf 23 -preset ultrafast "{output_path}" -y'
-                    process = subprocess.run(f'{ffmpeg_cmd} {ffmpeg_args}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-                
-                # Limpeza
+                        # Formatos comuns (MP4, MKV, etc)
+                        success, error_log = run_ffmpeg(f'-i "{input_path}" -c copy "{output_path}" -y', "Conversão rápida", total_duration)
+                        if not success:
+                            success, error_log = run_ffmpeg(f'-i "{input_path}" -c:v libx264 -preset ultrafast -crf 23 "{output_path}" -y', "Conversão compatível", total_duration)
+
+                # Limpeza final
                 if not keep_originals:
                     for p in saved_files:
                         if os.path.exists(p): os.remove(p)
                 if list_path and os.path.exists(list_path): os.remove(list_path)
                 
-                if process.returncode == 0:
+                if success:
+                    log_store.add_log(client_id, f"ESTADO:CONCLUIDO|Sucesso! Arquivo gerado: {output_filename}")
                     self.send_json_response(200, {'success': True, 'filename': output_filename, 'download_url': f'/download/{output_filename}'})
                 else:
-                    self.send_error_response(500, f"FFmpeg error: {process.stderr}")
+                    log_store.add_log(client_id, f"ERRO: Todas as estratégias de conversão falharam.")
+                    log_store.add_log(client_id, f"LOG: Último erro: {error_log}")
+                    self.send_error_response(500, f"Falha ao converter arquivo DAV. O formato pode estar corrompido ou é incompatível. Erro: {error_log}")
             except Exception as e:
+                log_store.add_log(client_id, f"Erro fatal: {str(e)}")
                 self.send_error_response(500, str(e))
 
     def do_GET(self):
         parsed_path = urlparse(self.path)
         
+        # Endpoint para Server-Sent Events (SSE) - Logs em tempo real
+        if parsed_path.path == '/api/events':
+            query = parse_qs(parsed_path.query)
+            client_id = query.get('id', ['default'])[0]
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Connection', 'keep-alive')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            log_store.add_log(client_id, "Conectado ao monitor de conversão.")
+            
+            try:
+                # Envia logs acumulados e novos
+                last_idx = 0
+                process = psutil.Process(os.getpid())
+                
+                while True:
+                    # Monitoramento de memória
+                    mem_info = process.memory_info().rss / (1024 * 1024) # MB
+                    mem_message = f"MEM_USAGE: {mem_info:.2f} MB"
+                    self.wfile.write(f"data: {mem_message}\n\n".encode())
+                    print(f"[Monitor] {mem_message}") # Adicionado para logar no console
+                    
+                    current_logs = log_store.get_logs(client_id)
+                    if len(current_logs) > last_idx:
+                        for i in range(last_idx, len(current_logs)):
+                            msg = current_logs[i]
+                            self.wfile.write(f"data: {msg}\n\n".encode())
+                        self.wfile.flush()
+                        last_idx = len(current_logs)
+                    time.sleep(0.5)
+            except Exception as e:
+                # Conexão fechada pelo cliente
+                pass
+            return
+
         # Lógica de download
         if parsed_path.path.startswith('/download/'):
             filename = parsed_path.path[len('/download/'):]
@@ -234,7 +365,7 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
         self.send_json_response(status, {'success': False, 'error': message})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', '8000'))
+    port = int(os.environ.get('PORT', '5001'))
     print(f"--- Iniciando servidor local na porta {port}... ---")
     try:
         # Usar ThreadingHTTPServer para permitir múltiplas conexões simultâneas

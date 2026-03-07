@@ -71,9 +71,12 @@ class handler(BaseHTTPRequestHandler):
             # Executa a conversão
             process = subprocess.run(args, capture_output=True, text=True)
 
-            # Se falhou o copy, tenta recodificar (mais lento, pode dar timeout na Vercel)
-            if process.returncode != 0 and output_format == 'mp4':
-                args_re = [ffmpeg_cmd, '-i', saved_files[0] if len(saved_files) == 1 else list_path, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'aac', output_path, '-y']
+            # Se falhou o copy, tenta recodificar (funciona para um arquivo ou concat)
+            if process.returncode != 0 and (output_format == 'mp4' or output_format == 'mkv'):
+                if len(saved_files) > 1:
+                    args_re = [ffmpeg_cmd, '-f', 'concat', '-safe', '0', '-i', list_path, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'aac', output_path, '-y']
+                else:
+                    args_re = [ffmpeg_cmd, '-i', saved_files[0], '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'aac', output_path, '-y']
                 process = subprocess.run(args_re, capture_output=True, text=True)
 
             if process.returncode == 0:

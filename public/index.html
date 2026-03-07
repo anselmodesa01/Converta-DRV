@@ -45,41 +45,45 @@
             <div class="grid-overlay"></div>
         </div>
         <div class="hero-content">
-            <div class="badge">
-                <i class="fas fa-shield-alt"></i>
-                <span>Especialista em DVR/Dav</span>
-            </div>
-            <h1 class="hero-title">
-                Converta seus vídeos <span class="gradient-text">DAV</span><br>
-                em segundos
-            </h1>
-            <p class="hero-description">
-                A ferramenta mais rápida e confiável para converter arquivos de sistemas de vigilância. 
-                Mantenha a qualidade original e tenha compatibilidade com todos os players.
-            </p>
-            <div class="hero-stats">
-                <div class="stat-item">
-                    <span class="stat-number">100%</span>
-                    <span class="stat-label">Qualidade mantida</span>
+            <div class="hero-text-column">
+                <div class="badge">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Especialista em DVR/Dav</span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-number">1.2k+</span>
-                    <span class="stat-label">Conversões realizadas</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number">30s</span>
-                    <span class="stat-label">Tempo médio</span>
+                <h1 class="hero-title">
+                    Converta seus vídeos <span class="gradient-text">DAV</span><br>
+                    em segundos
+                </h1>
+                <p class="hero-description">
+                    A ferramenta mais rápida e confiável para converter arquivos de sistemas de vigilância. 
+                    Mantenha a qualidade original e tenha compatibilidade com todos os players.
+                </p>
+                <div class="hero-cta">
+                    <button class="btn-primary" onclick="scrollToConverter()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        Começar Conversão
+                    </button>
+                    <button class="btn-play" onclick="showDemo()">
+                        <i class="fas fa-play"></i>
+                        Ver Demonstração
+                    </button>
                 </div>
             </div>
-            <div class="hero-cta">
-                <button class="btn-primary" onclick="scrollToConverter()">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    Começar Conversão
-                </button>
-                <button class="btn-play" onclick="showDemo()">
-                    <i class="fas fa-play"></i>
-                    Ver Demonstração
-                </button>
+            <div class="hero-stats-column">
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">100%</span>
+                        <span class="stat-label">Qualidade mantida</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">1.2k+</span>
+                        <span class="stat-label">Conversões realizadas</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">30s</span>
+                        <span class="stat-label">Tempo médio</span>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="hero-image">
@@ -295,6 +299,9 @@
                 </div>
 
                 <div class="progress-container" id="progressContainer" style="display: none;">
+                    <div class="memory-usage" id="memoryUsageDisplay">
+                        <i class="fas fa-memory"></i> Memória: <span id="memValue">0.00 MB</span>
+                    </div>
                     <div class="progress-info">
                         <span>Convertendo...</span>
                         <span id="progressPercent">0%</span>
@@ -303,7 +310,7 @@
                         <div class="progress-fill" id="progressFill" style="width: 0%"></div>
                     </div>
                     <div class="progress-status" id="progressStatus">
-                        Aguardando início...
+                        Preparando arquivos...
                     </div>
                     
                     <div class="console-toggle">
@@ -443,6 +450,8 @@
             <p>&copy; 2025 DAVConverter. Todos os direitos reservados.</p>
         </div>
     </footer>
+
+    <div id="toastContainer" class="toast-container"></div>
 
     <script src="js/script.js"></script>
 </body>
