@@ -26,9 +26,9 @@
 
             <ul class="nav-menu" id="navMenu">
                 <li><a href="#home">Início</a></li>
-                <li><a href="#features">Recursos</a></li>
+                <li><a href="#converter" onclick="switchTab('dav-to-mp4')">DAV para MP4</a></li>
+                <li><a href="#converter" onclick="switchTab('mp4-to-dav')">MP4 para DAV</a></li>
                 <li><a href="#como-funciona">Como Funciona</a></li>
-                <li><a href="#contato">Contato</a></li>
             </ul>
             <div class="nav-actions">
                 <button class="btn-outline" onclick="scrollToConverter()">
@@ -141,10 +141,15 @@
         <div class="converter-container">
             <div class="converter-header">
                 <h2 class="section-title">Conversor <span class="accent">Inteligente</span></h2>
-                <p>Conversão real de arquivos DAV via motor Python + FFmpeg</p>
-                <div class="engine-badge">
-                    <i class="fab fa-python"></i>
-                    Servidor Python Ativo (Porta 5000)
+                <p>Conversão real de arquivos via motor Python + FFmpeg (v2.1)</p>
+                
+                <div class="converter-tabs">
+                    <button class="tab-btn active" onclick="switchTab('dav-to-mp4')" id="tabDavToMp4">
+                        <i class="fas fa-file-export"></i> DAV para MP4/Outros
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('mp4-to-dav')" id="tabMp4ToDav">
+                        <i class="fas fa-file-import"></i> MP4 para DAV
+                    </button>
                 </div>
             </div>
             
@@ -196,7 +201,7 @@
                     <div class="file-items" id="fileItems"></div>
                 </div>
 
-                <div class="converter-options">
+                <div class="converter-options" id="davOptions">
                     <!-- Formato de Saída -->
                     <div class="options-group">
                         <label>Formato de saída:</label>
@@ -287,6 +292,25 @@
                     </div>
                 </div>
 
+                <!-- Nova seção MP4 para DAV -->
+                <div class="converter-options" id="mp4ToDavOptions" style="display: none;">
+                    <div class="options-group">
+                        <label>Configurações MP4 para DAV:</label>
+                        <div class="info-card">
+                            <i class="fas fa-info-circle"></i>
+                            <p>Esta função converterá seus arquivos MP4 para o formato DAV compatível com a maioria dos DVRs (Dahua, Intelbras, etc).</p>
+                        </div>
+                    </div>
+                    
+                    <div class="options-group">
+                        <label>Nome do arquivo DAV final:</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="filenameDav" placeholder="video_backup" value="video_backup">
+                            <span class="extension-label">.dav</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="converter-actions">
                     <button class="btn-convert" onclick="startConversion()" id="convertBtn" disabled>
                         <i class="fas fa-sync-alt"></i>
@@ -303,8 +327,13 @@
                         <i class="fas fa-memory"></i> Memória: <span id="memValue">0.00 MB</span>
                     </div>
                     <div class="progress-info">
-                        <span>Convertendo...</span>
-                        <span id="progressPercent">0%</span>
+                        <span>Processamento:</span>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <button id="pauseBtn" class="btn-console" onclick="togglePause()" style="display: none; padding: 0.25rem 0.75rem; border-radius: 5px; font-size: 0.75rem; background: var(--bg-card-hover);">
+                                <i class="fas fa-pause"></i> <span>Pausar</span>
+                            </button>
+                            <span id="progressPercent">0%</span>
+                        </div>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill" style="width: 0%"></div>

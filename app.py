@@ -8,7 +8,15 @@ import re
 import uuid
 import threading
 import psutil
-from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
+try:
+    from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
+except ImportError:
+    # Para versões mais antigas do Python 3
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
+    import socketserver
+    class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+        pass
+
 from urllib.parse import urlparse, parse_qs
 from werkzeug.formparser import parse_form_data
 
@@ -47,6 +55,10 @@ class LogStore:
                 del self.logs[client_id]
 
 log_store = LogStore()
+
+# Dicionário global para rastrear processos FFmpeg ativos por client_id
+active_processes = {}
+processes_lock = threading.Lock()
 
 def download_ffmpeg():
     print("--- FFmpeg não encontrado. Baixando automaticamente... ---")
@@ -111,6 +123,50 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
+        parsed_path = urlparse(self.path)
+        
+        # Endpoint para pausar conversão
+        if parsed_path.path == '/api/pause':
+            client_id = self.headers.get('X-Client-ID', 'default')
+            with processes_lock:
+                process = active_processes.get(client_id)
+                if process and process.poll() is None: # Verifica se o processo ainda está rodando
+                    try:
+                        p = psutil.Process(process.pid)
+                        p.suspend()
+                        for child in p.children(recursive=True):
+                            child.suspend()
+                        log_store.add_log(client_id, "ESTADO:PAUSADO|A conversão foi pausada.")
+                        self.send_json_response(200, {'success': True, 'message': 'Pausado'})
+                        return
+                    except Exception as e:
+                        self.send_error_response(500, f"Erro ao pausar: {str(e)}")
+                        return
+                else:
+                    self.send_error_response(404, "Processo não encontrado ou já finalizado")
+                    return
+
+        # Endpoint para retomar conversão
+        if parsed_path.path == '/api/resume':
+            client_id = self.headers.get('X-Client-ID', 'default')
+            with processes_lock:
+                process = active_processes.get(client_id)
+                if process and process.poll() is None:
+                    try:
+                        p = psutil.Process(process.pid)
+                        p.resume()
+                        for child in p.children(recursive=True):
+                            child.resume()
+                        log_store.add_log(client_id, "ESTADO:CONVERTENDO|A conversão foi retomada.")
+                        self.send_json_response(200, {'success': True, 'message': 'Retomado'})
+                        return
+                    except Exception as e:
+                        self.send_error_response(500, f"Erro ao retomar: {str(e)}")
+                        return
+                else:
+                    self.send_error_response(404, "Processo não encontrado ou já finalizado")
+                    return
+
         if self.path == '/api' or self.path == '/convert':
             client_id = self.headers.get('X-Client-ID', 'default')
             log_store.add_log(client_id, "ESTADO:RECEBENDO|Iniciando recebimento dos dados...")
@@ -164,8 +220,13 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
                 if clean_output_name.lower().endswith(f".{output_format.lower()}"):
                     clean_output_name = clean_output_name[:-(len(output_format) + 1)]
 
-                output_filename = f"{clean_output_name}.{output_format}"
-                output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+                # Adicionar timestamp para garantir unicidade e evitar cache/sobreposição
+                timestamp = int(time.time())
+                output_filename = f"{clean_output_name}_{timestamp}.{output_format}"
+                output_path = os.path.abspath(os.path.join(OUTPUT_FOLDER, output_filename))
+                
+                log_store.add_log(client_id, f"LOG:Formato de saída detectado: {output_format}")
+                log_store.add_log(client_id, f"LOG:Caminho de saída: {output_path}")
                 
                 # Calcular tamanho total dinâmico para os logs
                 total_size_bytes = sum(os.path.getsize(p) for p in saved_files)
@@ -200,24 +261,34 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
                         errors='replace'
                     )
                     
-                    last_line = ""
-                    for line in process.stdout:
-                        line = line.strip()
-                        if not line: continue
-                        last_line = line
+                    # Registrar o processo como ativo
+                    with processes_lock:
+                        active_processes[client_id] = process
+                    
+                    try:
+                        last_line = ""
+                        for line in process.stdout:
+                            line = line.strip()
+                            if not line: continue
+                            last_line = line
 
-                        if 'time=' in line:
-                            match = re.search(r'time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})', line)
-                            if match and total_duration > 0:
-                                hours, minutes, seconds, ms = map(int, match.groups())
-                                current_time = hours * 3600 + minutes * 60 + seconds + ms / 100
-                                progress = (current_time / total_duration) * 100
-                                log_store.add_log(client_id, f"PROGRESSO:{min(progress, 100):.1f}")
+                            if 'time=' in line:
+                                match = re.search(r'time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})', line)
+                                if match and total_duration > 0:
+                                    hours, minutes, seconds, ms = map(int, match.groups())
+                                    current_time = hours * 3600 + minutes * 60 + seconds + ms / 100
+                                    progress = (current_time / total_duration) * 100
+                                    log_store.add_log(client_id, f"PROGRESSO:{min(progress, 100):.1f}")
+                                else:
+                                    # Fallback para quando a duração não está disponível
+                                    log_store.add_log(client_id, f"PROGRESSO:LINE:{line}")
                             else:
-                                # Fallback para quando a duração não está disponível
-                                log_store.add_log(client_id, f"PROGRESSO:LINE:{line}")
-                        else:
-                             log_store.add_log(client_id, f"LOG:{line}")
+                                 log_store.add_log(client_id, f"LOG:{line}")
+                    finally:
+                        # Remover o processo do registro de ativos
+                        with processes_lock:
+                            if client_id in active_processes:
+                                del active_processes[client_id]
 
                     process.wait()
                     success = os.path.exists(output_path) and os.path.getsize(output_path) > 1000
@@ -243,22 +314,30 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
                         for p in saved_files:
                             f.write(f"file '{os.path.abspath(p).replace('\\', '/')}'\n")
                     
-                    if output_format == 'mp3':
+                    if output_format == 'dav':
+                        # Para DAV, usamos o muxer h264 raw, pois dhav muxer não é suportado para escrita
+                        # Nota: raw h264 não suporta áudio.
+                        success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c:v libx264 -crf 23 -pix_fmt yuv420p -an -f h264 "{output_path}" -y', "Unindo e convertendo para DAV (H264 Raw)")
+                    elif output_format == 'mp3':
                         success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -vn -acodec libmp3lame -q:a 2 "{output_path}" -y', "Extraindo áudio de todos")
                     elif output_format == 'avi':
                         success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c:v mpeg4 -vtag xvid -q:v 5 -c:a aac "{output_path}" -y', "Unindo em AVI")
                     else:
                         # Estratégia 1: Concat rápido
-                        success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c copy "{output_path}" -y', "Tentando união rápida")
+                        extra_args = "-f h264 -an" if output_format == 'dav' else ""
+                        success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c copy {extra_args} "{output_path}" -y', "Tentando união rápida")
                         if not success:
                             # Estratégia 2: Concat com Re-encode (mais seguro para DAVs diferentes)
-                            success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac "{output_path}" -y', "Tentando união com re-processamento")
+                            success, error_log = run_ffmpeg(f'-f concat -safe 0 -i "{list_path}" -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac {extra_args} "{output_path}" -y', "Tentando união com re-processamento")
                 else:
                     # Estratégia de ARQUIVO ÚNICO
                     input_path = os.path.abspath(saved_files[0])
                     is_dav = input_path.lower().endswith('.dav')
                     
-                    if output_format == 'mp3':
+                    if output_format == 'dav':
+                        # Raw h264 para .dav (sem áudio)
+                        success, error_log = run_ffmpeg(f'-i "{input_path}" -c:v libx264 -crf 23 -pix_fmt yuv420p -an -f h264 "{output_path}" -y', "Convertendo para DAV (H264 Raw)", total_duration)
+                    elif output_format == 'mp3':
                         success, error_log = run_ffmpeg(f'-i "{input_path}" -vn -acodec libmp3lame -q:a 2 "{output_path}" -y', "Extraindo áudio", total_duration)
                     elif output_format == 'avi':
                         success, error_log = run_ffmpeg(f'-i "{input_path}" -c:v mpeg4 -vtag xvid -q:v 5 -c:a aac "{output_path}" -y', "Convertendo para AVI", total_duration)
@@ -267,9 +346,10 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
                         success, error_log = run_ffmpeg(f'-analyzeduration 100M -probesize 100M -f dhav -i "{input_path}" -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -fflags +genpts "{output_path}" -y', "Estratégia 1: Formato DHAV", total_duration)
                     else:
                         # Formatos comuns (MP4, MKV, etc)
-                        success, error_log = run_ffmpeg(f'-i "{input_path}" -c copy "{output_path}" -y', "Conversão rápida", total_duration)
+                        extra_args = "-f h264 -an" if output_format == 'dav' else ""
+                        success, error_log = run_ffmpeg(f'-i "{input_path}" -c copy {extra_args} "{output_path}" -y', "Conversão rápida", total_duration)
                         if not success:
-                            success, error_log = run_ffmpeg(f'-i "{input_path}" -c:v libx264 -preset ultrafast -crf 23 "{output_path}" -y', "Conversão compatível", total_duration)
+                            success, error_log = run_ffmpeg(f'-i "{input_path}" -c:v libx264 -preset ultrafast -crf 23 {extra_args} "{output_path}" -y', "Conversão compatível", total_duration)
 
                 # Limpeza final
                 if not keep_originals:
