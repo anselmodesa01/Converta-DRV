@@ -8,6 +8,7 @@ import re
 import uuid
 import threading
 import psutil
+import platform
 try:
     from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
 except ImportError:
@@ -26,6 +27,9 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 OUTPUT_FOLDER = os.path.join(BASE_DIR, 'outputs')
 FFMPEG_PATH = os.path.join(BASE_DIR, 'ffmpeg.exe')
 STATIC_FOLDER = os.path.join(BASE_DIR, 'public')
+
+# Detecta o sistema operacional
+IS_WINDOWS = platform.system().lower() == 'windows'
 
 # Garante que as pastas existam
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -61,7 +65,11 @@ active_processes = {}
 processes_lock = threading.Lock()
 
 def download_ffmpeg():
-    print("--- FFmpeg não encontrado. Baixando automaticamente... ---")
+    if not IS_WINDOWS:
+        print("--- No Linux/Render, o FFmpeg deve ser instalado via pacote do sistema. ---")
+        return False
+
+    print("--- FFmpeg não encontrado. Baixando automaticamente para Windows... ---")
     url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
     zip_path = os.path.join(BASE_DIR, "ffmpeg.zip")
     try:
@@ -83,9 +91,8 @@ def download_ffmpeg():
 
 def get_ffmpeg_command():
     print("--- Verificando instalação do FFmpeg... ---")
-    if os.path.exists(FFMPEG_PATH):
-        print("--- FFmpeg encontrado na pasta do projeto. ---")
-        return f'"{FFMPEG_PATH}"'
+    
+    # 1. Verifica no PATH do sistema (Funciona em Linux/Render e Windows)
     try:
         ret = subprocess.call('ffmpeg -version', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
         if ret == 0:
@@ -93,12 +100,20 @@ def get_ffmpeg_command():
             return 'ffmpeg'
     except:
         pass
-    
-    print("*** AVISO: FFmpeg não encontrado. ***")
-    if download_ffmpeg():
+
+    # 2. Verifica binário local (Apenas Windows)
+    if IS_WINDOWS and os.path.exists(FFMPEG_PATH):
+        print("--- FFmpeg encontrado na pasta do projeto (Windows). ---")
         return f'"{FFMPEG_PATH}"'
     
-    print("*** ERRO FATAL: Não foi possível encontrar ou baixar o FFmpeg. ***")
+    # 3. Tenta baixar se for Windows
+    if IS_WINDOWS:
+        print("*** AVISO: FFmpeg não encontrado. Tentando baixar... ***")
+        if download_ffmpeg():
+            return f'"{FFMPEG_PATH}"'
+    
+    print("*** ERRO FATAL: Não foi possível encontrar o FFmpeg. ***")
+    print("DICA: No Render, use o Build Command: apt-get update && apt-get install -y ffmpeg")
     return None
 
 # Iniciar verificação do FFmpeg ao carregar o script
