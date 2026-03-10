@@ -1,11 +1,13 @@
 FROM python:3.9-slim
 
-# Instala FFmpeg e dependências do sistema
+# Instala FFmpeg e dependências de compilação para o psutil
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Define o diretório de trabalho
+# Define o diretório de trabalho dentro do container
 WORKDIR /app
 
 # Copia o requirements.txt primeiro para aproveitar o cache das camadas

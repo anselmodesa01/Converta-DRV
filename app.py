@@ -464,11 +464,16 @@ if __name__ == '__main__':
     host = '0.0.0.0'
     port = int(os.environ.get('PORT', '10000'))
     
-    print(f"--- Iniciando servidor em {host}:{port}... ---")
+    print("--------------------------------------------------")
+    print(f"SISTEMA: {platform.system()}")
+    print(f"PORTA DETECTADA: {port}")
+    print(f"FFMPEG COMMAND: {FFMPEG_CMD}")
+    print(f"DIRETÓRIO BASE: {BASE_DIR}")
+    print("--------------------------------------------------")
+    
     try:
-        # Usar ThreadingHTTPServer para permitir múltiplas conexões simultâneas
         httpd = ThreadingHTTPServer((host, port), UnifiedHandler)
-        print(f"--- Servidor Ativo em http://{host}:{port} ---")
+        print(f"--- Servidor ONLINE em http://{host}:{port} ---")
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\n--- Servidor interrompido. ---")
