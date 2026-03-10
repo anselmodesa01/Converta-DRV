@@ -1,4 +1,12 @@
 // Variáveis globais
+// Link da API no Render
+const RENDER_API_URL = 'https://converta-drv.onrender.com';
+
+// Detecta automaticamente se deve usar o servidor local ou o Render
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? RENDER_API_URL 
+    : ''; // Em produção na Vercel, usa o proxy configurado no vercel.json
+
 let selectedFolder = '';
 let selectedFiles = [];
 
@@ -321,7 +329,7 @@ function completeConversion(format, filename, downloadUrl) {
             <small>Total de ${selectedFiles.length} arquivos processados pelo motor FFmpeg.</small>
         `;
 
-        window.lastDownloadUrl = 'http://localhost:5020' + downloadUrl;
+        window.lastDownloadUrl = (downloadUrl.startsWith('http') ? '' : API_BASE_URL) + downloadUrl;
     }, 500);
 }
 
