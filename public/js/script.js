@@ -6,7 +6,7 @@ const RENDER_API_URL = 'https://converta-drv.onrender.com';
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? RENDER_API_URL 
     : ''; // Em produção na Vercel, usa o proxy configurado no vercel.json
-
+// Variáveis globais
 let selectedFolder = '';
 let selectedFiles = [];
 let currentClientId = null;
