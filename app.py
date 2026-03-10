@@ -460,12 +460,15 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
         self.send_json_response(status, {'success': False, 'error': message})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', '5001'))
-    print(f"--- Iniciando servidor local na porta {port}... ---")
+    # No Render/Docker, o host DEVE ser '0.0.0.0'
+    host = '0.0.0.0'
+    port = int(os.environ.get('PORT', '10000'))
+    
+    print(f"--- Iniciando servidor em {host}:{port}... ---")
     try:
         # Usar ThreadingHTTPServer para permitir múltiplas conexões simultâneas
-        httpd = ThreadingHTTPServer(('', port), UnifiedHandler)
-        print(f"--- Servidor Ativo em http://localhost:{port} ---")
+        httpd = ThreadingHTTPServer((host, port), UnifiedHandler)
+        print(f"--- Servidor Ativo em http://{host}:{port} ---")
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\n--- Servidor interrompido. ---")
