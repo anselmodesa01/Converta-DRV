@@ -458,7 +458,7 @@ class UnifiedHandler(SimpleHTTPRequestHandler):
 
     def send_error_response(self, status, message):
         self.send_json_response(status, {'success': False, 'error': message})
-
+ #Adicionado comentário explicativo
 if __name__ == '__main__':
     # No Render/Docker, o host DEVE ser '0.0.0.0'
     host = '0.0.0.0'
